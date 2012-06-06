@@ -1,0 +1,30 @@
+<h2>Admin: Filters</h2>
+
+<table>
+  <tr>
+    <th>Type</th>
+    <th>Pattern</th>
+    <th>Response</th>
+    <th>Positives</th>
+    <th colspan="2"></th>
+  </tr>
+  
+<% for filter in @filters %>
+  <tr>
+    <td><%=h filter.pattern_type %></td>
+    <td><%=h filter.pattern %></td>
+    <td><%= h filter.response %></td>
+    <td><%= h filter.positives %></td>
+    <td><%= link_to 'Edit', edit_admin_filter_path(filter) %></td>
+    <td><%= link_to 'Destroy', admin_filter_path(filter), :confirm => 'Are you sure?', :method => :delete %></td>
+  </tr>
+<% end %>
+</table>
+
+<p>
+  Page: <%= paginating_links(@filters) %>
+</p>
+
+<p>
+  <%= link_to 'New filter', new_admin_filter_path %>
+</p>

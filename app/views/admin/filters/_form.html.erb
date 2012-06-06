@@ -1,0 +1,21 @@
+<%= f.error_messages %>
+
+<p>
+  <%= f.label :pattern_type %><br />
+  <%= f.select :pattern_type, DiscussionFilter::PATTERN_TYPES %>
+</p>
+
+<p>
+  <%= f.label :pattern %> (must escape typical regex chars if not treated as special, such as '.')<br />
+  /<%= f.text_field :pattern, :size=>60 %>/
+</p>
+
+<p>
+  <%= f.label :response %><br />
+  <%= f.select :response, DiscussionFilter::RESPONSES %>
+</p>
+
+<p>
+  <%= f.label :positives %><br />
+  <%= f.text_field :positives, :size=>10 %>
+</p>

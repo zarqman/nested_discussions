@@ -1,0 +1,8 @@
+Description:
+    Generates a migration for the NestedDiscussions plugin.
+
+Example:
+    ./script/generate nested_discussions_migration
+
+    This will create:
+        A migration for this plugin

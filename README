@@ -1,0 +1,187 @@
+NestedDiscussions
+=================
+
+NestedDiscussions is a fairly robust plugin that creates nested discussions.
+
+It depends on:
+  A nested set plugin (awesome_nested_set and better_nested_set) have been 
+    tested.
+  Rails 2.3
+
+It requires the addition of three db tables: discussions, comments, and 
+discussion_filters. Generate the following migration to do all the hard work:
+
+script/generate nested_discussions_migration
+
+Discussion, Comment, and DiscussionFilter models will be added to the app.
+Additionally, Admin::Filters and Admin::Controllers will be added.
+
+Routes to manage most of the plugin's work are added by the plugin itself.
+However, there is some work that is necessary to properly integrate with the
+source model and controller that will be 'discussed'.
+
+For reference, the following examples all come from an application with a 
+model, Article, that has discussions attached to it.
+
+The model needs simply this added:
+
+acts_as_discussable
+
+Note that this is set up as a polymorphic relationship, so multiple models 
+can all be discussable.
+
+This also adds one virtual attribute to the model: discussion_status. This
+attribute returns one of 'open', 'closed', or 'disabled'. It can also be set
+with any one of the same three values, with the one exception that 'disabled'
+cannot be set for any discussion which has comments. The discussion is 
+disabled when the discussable model doesn't actually have an associated
+discussion object (and setting to disabled removed the discussion record from
+the db). Open and closed should be self explanatory.
+
+
+The plugin requires a named route 'comment_on_discussion'. Example:
+
+map.comment_on_discussion 'articles/:id/add_comment', :controller=>'articles', :action=>'add_comment'
+
+:id will be the id of your own model (Article in our example).
+
+You must also provide the action to go with the above named route. This action
+is responsible for some parts of the comment rendering along with adding the
+comments to the db. An example follows. Please note that this is particularly
+bad code and you'll probably want to do (substantially) better.
+
+def add_comment
+  # A proper call to add_comment will include both an :id and :parent_id.
+  # :parent_id is used for nesting
+  if params[:id] and params[:parent_id]
+    @parent_id = params[:parent_id].to_i
+    # This is required to make some of the rendering work.
+    @root = case (params[:root] || 2).to_i
+      when 0: :anch0
+      when 1: :anch1
+      else :anch2
+    end
+    # This is your own model. Note that if you set all discussions to open and
+    # never close them, the :conditions would be unnecessary.
+    @article = Article.find(params[:id], :include => :discussion, :conditions=>{'discussions.open'=>true})
+    if request.post?
+      @comment = Comment.new(params[:comment])
+      @comment.author_ip = request.remote_ip.to_s
+      # You could also set @comment.approval_state here to a default appropriate for your app.
+      
+      # By default comments only work via JS
+      unless @parent_id == 0
+        unless @parent = @article.discussion.comments.find_by_id( @parent_id )
+          respond_to do |format|
+            format.js { render :update do |page| page.alert('Parent comment not found.') end }
+          end
+          return
+        end
+      end
+      if (@article.discussion.comments << @comment) and (@parent_id == 0 or @comment.move_to_child_of(@parent) )
+        # This generates emails to authors of parent posts. It should be disabled unless you
+        # have written your own ActionMailer notifier. One is not provided with this plugin. 
+        # Note that as written, if a comment is flagged by the filter system as requiring
+        # moderation, the system will not go back and email parent authors.
+        if @parent_id != 0 and @comment.approved?
+          emails = @comment.get_emails_for_notify
+          emails.each {|to| CommentNotifier.deliver_new_reply_notice(@article, @comment, to)}
+        end
+        respond_to do |format|
+          format.js do
+            render :update do |page| 
+              # This likely needs to redirect to the original article page. 
+              page.redirect_to article_url(@article, :reload=>Time.current.to_i, :anchor => "comment_#{@comment.id}")
+            end
+          end
+        end
+      else
+        respond_to do |format|
+          format.js { render :update do |page| page.alert @comment.errors.full_messages.join(".\n") end }
+        end
+      end
+    else # !post?
+      @comment = Comment.new(:email_on_reply=>false, :author_email=>current_user.try(:email))
+      respond_to do |format|
+        format.js { render :update do |page|
+          rand_id = "addcomment_#{rand(9999)}" # so multiple forms can be independently canceled in the UI
+          after_loc = @root == :anch2 ? "comment_#{@parent_id}" : @root
+          page.insert_html(:after, after_loc, %Q{<div id="#{rand_id}" style="display:none"></div>})
+          page.replace_html(rand_id, :partial => 'comments/comment_form', :locals=>{:rand_id=>rand_id, :form_post_url=>comment_on_discussion_path(@article)})
+          page.visual_effect :blind_down, rand_id
+        end }
+      end
+    end
+  else
+    redirect_to :action => 'index'
+  end
+end
+
+
+About 10 lines from the bottom you'll see page.replace_html with a parameter
+of :form_post_url. If you desire to separate add_comment above in to two
+parts (add_comment and create_comment perhaps), this is the place to setup the
+url for the method that actually creates the comment. The named_route 
+mentioned earlier manages the url to the action that will show the form for
+the new comment.
+
+Note the discussion in the middle about sending out emails to parent post 
+authors. You will need your own ActionMailer notifier to do that work. The
+plugin merely facilitates getting the list of email addresses. Further, you'll
+need your own mechanism to allow people to unsubscribe.
+
+Any (or all) of the views used by the system can be easily overridden. Just 
+copy the original view into your app/views/... and make whatever changes you
+wish. Rails will automatically favor your view over the plugin's copy.
+
+Lastly, some CSS is required. Example classes are below. You will want to take
+these, add them to your app's .css file and modify them to fit your design.
+
+
+#discussion .comment {
+  margin: 12px 0 30px;
+}
+#discussion .comment .upline {
+  border-top: solid 1px #999;
+  padding: 1px 0 3px 1px;
+}
+#discussion .comment .byline {
+  border-top: solid 1px #999;
+  padding-bottom: 2px;
+  text-align: right;
+}
+#discussion .byline {
+  margin-bottom: 15px;
+}
+#discussion .comment .body {
+  margin: 0 6px;
+}
+#discussion .level1 {
+  margin-left: 20px;
+}
+#discussion .level2 {
+  margin-left: 40px;
+}
+#discussion .level3 {
+  margin-left: 60px;
+}
+#discussion .level4 {
+  margin-left: 80px;
+}
+#discussion .level5, #discussion .level6, #discussion .level7, #discussion .level8, #discussion .level9 {
+  margin-left: 100px;
+}
+#discussion .disapproved {
+  background: #ffebee;
+}
+#discussion .commentform {
+  border: 1px dotted #999;
+  text-align: left;
+  padding: 2px 10px;
+}
+
+
+
+
+
+Copyright (c) 2009 t.e.morgan, released under the MIT license

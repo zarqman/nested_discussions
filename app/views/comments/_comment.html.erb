@@ -1,0 +1,26 @@
+<div id="comment_<%=c.id %>" class="comment level<%= [c.level,9].min %> <%= 'disapproved' unless c.approved? %>">
+  <div class="upline">
+    <% if c.created_at > 24.hours.ago %>
+      <%= time_ago_in_words(c.created_at).capitalize %> ago
+    <% else %>
+      On <%= c.created_at.strftime("%B %e, %Y at %H:%M") %>,
+    <% end %>
+    <%= link_to_unless( c.author_url.blank?, c.author_name, c.author_url, :popup => true, :rel=>'nofollow' ) %> said:
+    <% if is_admin %>
+      (<%= mail_to(c.author_email, 'email') %>;
+      <%= c.email_on_reply ? 'replies:email' : 'replies:silence' %>)
+    <% end %>
+  </div>
+  <div class="body">
+    <%= RedCloth.new(c.body, [:filter_html,:filter_styles,:filter_classes,:filter_ids]).to_html %>
+  </div>
+  <div class="byline">
+    <%= link_to_remote 'reply', :url => comment_on_discussion_path(:parent_id=>c.id, :id=>c.discussion.discussable_id), :method => 'get' unless is_closed %>
+    <% if is_admin %>
+      <%= link_to_remote 'block ip', :url => block_ip_admin_filters_path(:ip=>h(c.author_ip)), :confirm=>"Block #{h(c.author_ip)} ?" %>
+      <%= link_to_remote 'delete', :url => admin_comment_path(:id=>c), :confirm => 'Really?', :method=>:delete %>
+      <%= link_to_remote 'disapprove', :url => disapprove_admin_comment_path(:id=>c), :method=>:post if c.approved? %>
+      <%= link_to_remote 'approve', :url => approve_admin_comment_path(:id=>c), :method=>:post unless c.approved? %>
+    <% end %>
+  </div>
+</div>

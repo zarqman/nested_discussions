@@ -1,0 +1,8 @@
+<h2>Edit filter</h2>
+
+<% form_for [:admin, @filter] do |f| %>
+  <%= render :partial => 'form', :locals=>{:f=>f} %>
+  <%= f.submit "Edit" %>
+<% end %>
+
+<%= link_to 'Back', admin_filters_path %>

@@ -1,0 +1,22 @@
+<div id="discussion">
+  <a id="comments"></a>
+  
+  <div class="leading-line">
+    <% if discussion.open? %>
+      <%= link_to_remote 'add comment', :url=>comment_on_discussion_path(:parent_id=>0, :root=>0, :id=>discussion.discussable_id), :method=>:get %>
+      <div id="anch0"></div>
+    <% end %>
+  </div>
+  
+  <% discussion.comments.each do |comment| %>
+    <%= render :partial => "comments/comment", :locals=>{:c=>comment, :is_closed=>!discussion.open?, :is_admin=>is_admin} if comment.approved? or (is_admin && comment.visible_to_admin?) %>
+  <% end %>
+  
+  <div class="trailing-line">
+    <% if discussion.open? && !discussion.comments.approved.empty? %>
+      <%= link_to_remote 'add comment', :url=>comment_on_discussion_path(:parent_id=>0, :root=>1, :id=>discussion.discussable_id), :method=>:get %>
+      <div id="anch1"></div>
+    <% end %>
+  </div>
+  
+</div>

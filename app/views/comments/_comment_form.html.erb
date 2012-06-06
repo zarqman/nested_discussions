@@ -1,0 +1,40 @@
+<div class="commentform">
+  <%= form_remote_tag :url => form_post_url %>
+    <%= hidden_field_tag 'parent_id', @parent_id %>
+
+    <%= error_messages_for 'comment' %>
+
+    <table class="form">
+    <tr>
+      <td><label for="comment_author_name">Your name</label></td>
+      <td><%= text_field 'comment', 'author_name' %></td>
+    </tr>
+    <tr>
+      <td><label for="comment_author_email">Your email</label></td>
+      <td><%= text_field 'comment', 'author_email' %> (will not be published)</td>
+    </tr>
+    <tr>
+      <td><label for="comment_email_on_reply">Send email notification for replies?</label></td>
+      <td><%= select 'comment', 'email_on_reply', [['Yes, let me know when someone replies to me',true], ['No, don\'t notify me about replies',false]] %></td>
+    </tr>
+    <tr>
+      <td><label for="comment_author_url">Your homepage</label></td>
+      <td><%= text_field 'comment', 'author_url' %> (optional)</td>
+    </tr>
+    <tr>
+      <td><label for="comment_body">Comment</label></td>
+      <td><%= text_area 'comment', 'body', :size => '60x8'  %></td>
+    </tr>
+    <tr>
+      <td></td>
+      <td>
+        <%= submit_tag 'add comment' %>
+        <%= link_to_function 'cancel' do |page| 
+          page.visual_effect :blind_up, rand_id
+          page.delay(2) { page.remove rand_id }
+        end %>
+      </td>
+    </tr>
+    </table>
+  </form>
+</div>
